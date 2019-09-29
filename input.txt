@@ -1,0 +1,12 @@
+neuronio 0=> 2
+neuronio 0=> 3
+neuronio 0=> 1
+neuronio 1=> 1
+neuronio 1=> 2
+neuronio 1=> 3
+neuronio 2=> 1
+neuronio 2=> 2
+neuronio 2=> 3
+neuronio 3=> 0.016246739376074716
+neuronio 3=> 0.18222936519437738
+neuronio 3=> 0.5904013417880136
