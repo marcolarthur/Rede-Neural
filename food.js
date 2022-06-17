@@ -1,12 +1,13 @@
 class Food {
-  constructor(x, y) {
+  constructor(sketch, x, y) {
     this.x = x;
     this.y = y;
-    this.color = color(255, 0, 0); 
+    this.sketch = sketch;
+    this.color = sketch.color(255, 0, 0);
   }
 
-  update(min, max) {
-    this.x = floor(random(min, min + max));
-    this.y = floor(random(0, max));
+  update() {
+    this.x = this.sketch.floor(this.sketch.random(0, this.sketch.width));
+    this.y = this.sketch.floor(this.sketch.random(0, this.sketch.height));
   }
 }

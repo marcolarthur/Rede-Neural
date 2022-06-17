@@ -1,32 +1,27 @@
 class Snake {
-  constructor(x, y) {
+  constructor(sketch, x, y, brain) {
+    this.sketch = sketch;
     this.x = x;
     this.y = y;
-    this.color = generateColor();
-    this.xspeed = 1;
-    this.yspeed = 0;
-    this.total = 1;
+    this.color = this.generateColor();
+    this.xspeed = sketch.floor(sketch.random(2));
+    this.yspeed = this.xspeed == 0 ? 1 : 0;
+    // this.xspeed = 0;
+    // this.yspeed = 0;
+    this.total = 0;
     this.tail = [];
-    this.brain = new brain.NeuralNetwork({
-      activation: "sigmoid", // activation function
-      hiddenLayers: [4],
-      learningRate: 0.01,
-      iterations: 1000,
-      inputSize: 4,
-      outputSize: 1,
-    });
+    this.brain = brain;
   }
 
-
   update() {
-    this.x += this.xspeed;
-    this.y += this.yspeed;
     if (this.total > this.tail.length) {
       this.tail.push([this.x, this.y]);
     } else {
       this.tail.unshift([this.x, this.y]);
       this.tail.pop();
     }
+    this.x += this.xspeed * 10;
+    this.y += this.yspeed * 10;
   }
 
   changeDirection(dirString) {
@@ -58,42 +53,52 @@ class Snake {
     }
   }
 
-  checkDeath() {
-    for (const bodyPart of this.tail) {
-      if (this.x == bodyPart[0] && this.y == bodyPart[1]) {
+  checkDeath(height, width) {
+    if (this.x < 0 || this.x > width || this.y < 0 || this.y > height) {
+      return true;
+    }
+    for (let i = 0; i < this.tail.length; i++) {
+      if (this.tail[i][0] == this.x && this.tail[i][1] == this.y) {
         return true;
       }
     }
-    return false;
   }
 
-  checkEat(food){
-    if(this.x == food.x && this.y == food.y){
+  checkEat(food, pixelSize) {
+    if (
+      Math.abs(this.x - food.x) <= pixelSize &&
+      Math.abs(this.y - food.y) <= pixelSize
+    ) {
       this.total++;
+      this.update();
       return true;
     }
     return false;
   }
 
-  trainBrain() {
-    let inputs = [];
-    let outputs = [];
-    let dataSet = loadTable("dataSet.csv", "csv", "header");
-    for (let i = 0; i < dataSet.getRowCount(); i++) {
-      inputs.push(dataSet.getRow(i).arrays[0]);
-      outputs.push(dataSet.getRow(i).arrays[1]);
-    }
-    this.brain.train(inputs, outputs);
-  }
-}
-
-//generate colors except red tones
-function generateColor() {
-    let r = floor(random(100));
-    let g = floor(random(255));
-    let b = floor(random(255));
+  generateColor() {
+    let r = this.sketch.floor(this.sketch.random(100));
+    let g = this.sketch.floor(this.sketch.random(255));
+    let b = this.sketch.floor(this.sketch.random(255));
     if (r > g || r > b) {
-        return generateColor();
+      return this.generateColor();
     }
-    return color(r, g, b);
+    return this.sketch.color(r, g, b);
+  }
+
+  predict(x1, y1, x2, y2) {
+    const input = {
+      x1: x1,
+      y1: y1,
+      x2: x2,
+      y2: y2,
+    };
+    this.brain.net.classify(input, (err, result) => {
+      if (err) {
+        console.log(err);
+      } else {
+        this.changeDirection(result[0].label);
+      }
+    });
+  }
 }
