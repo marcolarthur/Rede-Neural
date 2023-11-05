@@ -7,14 +7,7 @@ class Snake {
     this.yspeed = 0;
     this.total = 1;
     this.tail = [];
-    this.brain = new brain.NeuralNetwork({
-      activation: "sigmoid", // activation function
-      hiddenLayers: [4],
-      learningRate: 0.01,
-      iterations: 1000,
-      inputSize: 4,
-      outputSize: 1,
-    });
+    this.isDead = false;
   }
 
 
@@ -36,7 +29,7 @@ class Snake {
       (this.yspeed == 1 && dirString == "up") ||
       (this.yspeed == -1 && dirString == "down")
     ) {
-      return;
+      return "";
     }
     switch (dirString) {
       case "up":
@@ -58,33 +51,17 @@ class Snake {
     }
   }
 
-  checkDeath() {
-    for (const bodyPart of this.tail) {
-      if (this.x == bodyPart[0] && this.y == bodyPart[1]) {
-        return true;
-      }
-    }
-    return false;
+  die(){
+    this.tail = [];
+    this.total = 0;
+    this.color = 'gray';
+    this.isDead = true;
   }
 
-  checkEat(food){
-    if(this.x == food.x && this.y == food.y){
-      this.total++;
-      return true;
-    }
-    return false;
+  grow(){
+    this.total++;
   }
-
-  trainBrain() {
-    let inputs = [];
-    let outputs = [];
-    let dataSet = loadTable("dataSet.csv", "csv", "header");
-    for (let i = 0; i < dataSet.getRowCount(); i++) {
-      inputs.push(dataSet.getRow(i).arrays[0]);
-      outputs.push(dataSet.getRow(i).arrays[1]);
-    }
-    this.brain.train(inputs, outputs);
-  }
+    
 }
 
 //generate colors except red tones
