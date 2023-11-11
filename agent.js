@@ -1,7 +1,12 @@
+const BATCH_SIZE = 1000;
+
 class Agent {
-  constructor(snake) {
+  constructor() {
+    this.n_games = 0;
+    this.epsilon = 0;
+    this.gamma = 0.9;
     this.score = 0;
-    this.snake = snake;
+    this.memory = [];
     this.brain = new brain.NeuralNetwork({
       activation: "sigmoid",
       learningRate: 0.01,
@@ -13,70 +18,97 @@ class Agent {
     return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
   }
 
-  predict(foodPosition, boardWidth, boardHeight) {
-    if (this.snake.isDead) return;
+  getState(food, snake, boardWidth, boardHeight) {
     const distance = this.getDistance(
-      this.snake.x,
-      this.snake.y,
-      foodPosition[0],
-      foodPosition[1]
+      snake.x,
+      snake.y,
+      food.x,
+      food.y
     );
+  
+    const maxPossibleDistance = this.getDistance(0, 0, boardWidth, boardHeight);
+    const normalizedDistanceToFood = distance / maxPossibleDistance;
+  
+    const distanceToTop = snake.y;
+    const distanceToBottom = boardHeight - snake.y;
+    const distanceToLeft = snake.x;
+    const distanceToRight = boardWidth - snake.x;
+  
+    const normalizedX = snake.x / boardWidth;
+    const normalizedY = snake.y / boardHeight;
+    const normalizedFoodX = food.x / boardWidth;
+    const normalizedFoodY = food.y / boardHeight;
+  
+    return [
+      normalizedX,
+      normalizedY,
+      normalizedFoodX,
+      normalizedFoodY,
+      normalizedDistanceToFood,
+      distanceToTop / boardHeight,
+      distanceToBottom / boardHeight,
+      distanceToLeft / boardWidth,
+      distanceToRight / boardWidth
+    ];
+  }
+  
+  train(){
+    const randomTrainingData = Array.from({ length: 1 }, () => ({
+      input: Array.from({ length: 9 }, () => Math.random()),
+      output: Array.from({ length: 4 }, () => Math.random()),
+    }));
 
-    const normalizedX = this.snake.x / boardWidth;
-    const normalizedY = this.snake.y / boardHeight;
-    const normalizedFoodX = foodPosition[0] / boardWidth;
-    const normalizedFoodY = foodPosition[1] / boardHeight;
-
-    let inputs = [normalizedX, normalizedY, normalizedFoodX, normalizedFoodY];
-    let prediction = this.brain.run(inputs);
-    let move = "";
-
-    if (prediction[2] < 0.5) {
-      move = prediction[0] < 0.5 ? "up" : "down";
+    this.brain.train(randomTrainingData);
+  }
+  getAction(state) {
+    this.epsilon = 80 - this.n_games;
+    const directions = ['left', 'right', 'up', 'down'];
+    let chosenDirection;
+  
+    if (Math.floor(Math.random() * 200) < this.epsilon) {
+      chosenDirection = directions[Math.floor(Math.random() * 4)];
     } else {
-      move = prediction[0] < 0.5 ? "left" : "right";
+      let prediction = this.brain.run(state);
+      let moveIndex = prediction.indexOf(Math.max(...prediction));
+      chosenDirection = directions[moveIndex];
     }
-
-    this.snake.changeDirection(move);
-
-    if (this.lastDistance > 0) {
-      if (distance > this.lastDistance) {
-        this.score -= 0.01;
-      }
-
-      if (distance < this.lastDistance) {
-        this.score += 0.01;
-      }
-
-      if (distance === 0) {
-        this.score += 100;
-      }
-    }
-    this.lastDistance = distance;
+  
+    return chosenDirection;
+  }
+  
+  remember(state, dir, reward, nextState, done){ // Corrected typo 'remeber' to 'remember'
+    this.memory.push([state, dir, reward, nextState, done]); // Adjusted pushing the data into memory
   }
 
-  trainBrain() {
-    let trainingData = [];
-    for (let i = 0; i < 100; i++) {
-      const input1 = Math.random();
-      const input2 = Math.random();
-      const input3 = Math.random();
-      const input4 = Math.random();
-
-      const deltaX = input3 - input1;
-      const deltaY = input4 - input2;
-
-      let outputX = deltaX > 0 ? 1.0 : 0.0;
-      let outputY = deltaY > 0 ? 1.0 : 0.0;
-
-      let outputPriority = Math.abs(deltaX) > Math.abs(deltaY) ? 0.0 : 1.0;
-
-      trainingData.push({
-        input: [input1, input2, input3, input4],
-        output: [outputX, outputY, outputPriority],
+  trainLongMemory() {
+    if (this.memory.length > BATCH_SIZE) {
+      let miniSample = this.memory.sort(() => Math.random() - 0.5).slice(0, BATCH_SIZE);
+  
+      let states = [];
+      let actions = [];
+      let rewards = [];
+      let nextStates = [];
+      let dones = [];
+    
+      miniSample.forEach((sample) => {
+        let [state, action, reward, nextState, done] = sample;
+        states.push(state);
+        actions.push(action);
+        rewards.push(reward);
+        nextStates.push(nextState);
+        dones.push(done);
       });
+  
+      this.trainStep(states, actions, rewards, nextStates, dones);
     }
+  }
 
-    this.brain.train(trainingData);
+  trainStep(states, actions, rewards, nextStates, dones) {
+    const randomTrainingData = Array.from({ length: 1 }, () => ({
+      input: Array.from({ length: 9 }, () => Math.random()),
+      output: Array.from({ length: 4 }, () => Math.random()),
+    }));
+
+    this.brain.train(randomTrainingData);
   }
 }

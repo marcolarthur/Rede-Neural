@@ -1,45 +1,42 @@
-let numOfAgents = 10;
 let fullWidth = window.innerWidth - 100;
 let fullHeight = window.innerHeight - 100;
-let board;
-let agents = [];
+let game;
+let agent;
+let record = 0;
 
 function setup() {
-  board = new Board(0, 0, fullWidth, fullHeight, numOfAgents);
-  for (let i = 0; i < numOfAgents; i++) {
-    let snake = board.getSnake(i);
-    let agent = new Agent(snake);
-    agent.trainBrain();
-    agents.push(agent);
-  }
+  game = new Game(0, 0, fullWidth, fullHeight);
+  agent = new Agent();
+  agent.train()
   createCanvas(fullWidth, fullHeight);
 }
 
 function restart() {
-  board = new Board(0, 0, fullWidth, fullHeight, numOfAgents);
-  agents = [];
-  for (let i = 0; i < numOfAgents; i++) {
-    let snake = board.getSnake(i);
-    let agent = new Agent(snake);
-    agent.trainBrain();
-    agents.push(agent);
-  }
-  createCanvas(fullWidth, fullHeight);
+  game.reset();
 }
 
 function draw() {
-  writeOnScreen();
-  let allSnakesDead = agents.every((agent) => agent.snake.isDead);
+  background(255);
+  const stateOld = agent.getState(game.food, game.snakes[0], game.xSize, game.ySize);
+  const finalMove = agent.getAction(stateOld);
+  const step = game.step(finalMove);
+  const stateNew = agent.getState(game.food, game.snakes[0], game.xSize, game.ySize);
 
-  if (allSnakesDead) {
-    restart();
-  } else {
-    background(0);
-    board.update();
-    board.draw();
-    for (let i = 0; i < agents.length; i++) {
-      agents[i].predict(board.getFoodPosition(), fullWidth, fullHeight);
+  const reward = step[0];
+  const gameOver =  step[1];
+  const score =  step[2];
+  agent.remember(stateOld, finalMove, reward, stateNew, gameOver);
+
+  if (gameOver) {
+    game.reset();
+    agent.n_games++;
+    agent.trainLongMemory();
+
+    if (score > record) {
+      record = score;      
     }
+
+    console.log(`Game ${agent.n_games}, Score: ${score.toFixed(1)}, Record: ${record.toFixed(1)}`);
   }
 }
 
@@ -62,7 +59,7 @@ function writeOnScreen() {
 
     if (agents[i].score === highestScore) {
       agentDiv.textContent += " <<";
-    } 
+    }
 
     if (agents[i].snake.isDead) {
       agentDiv.textContent += " dead";

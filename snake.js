@@ -3,6 +3,7 @@ class Snake {
     this.x = x;
     this.y = y;
     this.color = generateColor();
+    this.score = 0;
     this.xspeed = 1;
     this.yspeed = 0;
     this.total = 1;
@@ -54,14 +55,19 @@ class Snake {
   die(){
     this.tail = [];
     this.total = 0;
+    this.score = 0;
     this.color = 'gray';
     this.isDead = true;
   }
 
   grow(){
     this.total++;
+    this.score+=10;
   }
-    
+
+  giveScoreForWalk(){
+    this.score+=0.01;
+  }
 }
 
 //generate colors except red tones
