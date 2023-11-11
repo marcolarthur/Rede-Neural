@@ -5,8 +5,8 @@ class Food {
     this.color = color(255, 0, 0); 
   }
 
-  update(min, max) {
-    this.x = floor(random(min, min + max));
-    this.y = floor(random(0, max));
+  update(x, y) {
+    this.x = floor(random(BLOCK_SIZE, x - BLOCK_SIZE));
+    this.y = floor(random(BLOCK_SIZE, y - BLOCK_SIZE));
   }
 }

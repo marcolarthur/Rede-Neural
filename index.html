@@ -8,17 +8,22 @@
     <style>
     
     #div{
-        position: absolute;
-        top: 10;
-        left: 10;
         color: white;
         font-size: 32px;
-    }    
+        font-weight: bold;
+    } 
+    
+    #div2{
+        color: black;
+        font-size: 32px;
+        font-weight: bold;
+    }
     
     </style>
 </head>
 <body>
-    <div id="div"></div>
+    <div id="div" style="position: fixed; top: 0px; left: 10px;"></div>
+    <div id="div2" style="position: fixed; top: 8%; left: 85%;"></div>
     <script src="./libraries/gpu-browser.min.js"></script>
     <script src="./libraries/brain-browser.js"></script>
     <script src="./libraries/p5.min.js"></script>

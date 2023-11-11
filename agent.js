@@ -1,114 +1,95 @@
-const BATCH_SIZE = 1000;
+const actionMap = {
+  0: "left",
+  1: "right",
+  2: "up",
+  3: "down",
+};
 
 class Agent {
   constructor() {
-    this.n_games = 0;
-    this.epsilon = 0;
-    this.gamma = 0.9;
-    this.score = 0;
-    this.memory = [];
-    this.brain = new brain.NeuralNetwork({
-      activation: "sigmoid",
-      learningRate: 0.01,
-      iterations: 1000,
-    });
+    this.Q = {}; // Q-table to store Q-values
+    this.alpha = 0.1; // learning rate
+    this.gamma = 0.3; // discount factor
+    this.epsilon = 0.4; // exploration rate
+    this.lastStates = null;
+    this.lastActions = null;
+    this.record = 0;
   }
 
-  getDistance(x1, y1, x2, y2) {
-    return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
-  }
-
-  getState(food, snake, boardWidth, boardHeight) {
-    const distance = this.getDistance(
-      snake.x,
-      snake.y,
-      food.x,
-      food.y
-    );
-  
-    const maxPossibleDistance = this.getDistance(0, 0, boardWidth, boardHeight);
-    const normalizedDistanceToFood = distance / maxPossibleDistance;
-  
-    const distanceToTop = snake.y;
-    const distanceToBottom = boardHeight - snake.y;
-    const distanceToLeft = snake.x;
-    const distanceToRight = boardWidth - snake.x;
-  
-    const normalizedX = snake.x / boardWidth;
-    const normalizedY = snake.y / boardHeight;
-    const normalizedFoodX = food.x / boardWidth;
-    const normalizedFoodY = food.y / boardHeight;
-  
-    return [
-      normalizedX,
-      normalizedY,
-      normalizedFoodX,
-      normalizedFoodY,
-      normalizedDistanceToFood,
-      distanceToTop / boardHeight,
-      distanceToBottom / boardHeight,
-      distanceToLeft / boardWidth,
-      distanceToRight / boardWidth
-    ];
-  }
-  
-  train(){
-    const randomTrainingData = Array.from({ length: 1 }, () => ({
-      input: Array.from({ length: 9 }, () => Math.random()),
-      output: Array.from({ length: 4 }, () => Math.random()),
-    }));
-
-    this.brain.train(randomTrainingData);
-  }
-  getAction(state) {
-    this.epsilon = 80 - this.n_games;
-    const directions = ['left', 'right', 'up', 'down'];
-    let chosenDirection;
-  
-    if (Math.floor(Math.random() * 200) < this.epsilon) {
-      chosenDirection = directions[Math.floor(Math.random() * 4)];
-    } else {
-      let prediction = this.brain.run(state);
-      let moveIndex = prediction.indexOf(Math.max(...prediction));
-      chosenDirection = directions[moveIndex];
+  chooseActions(states) {
+    const actions = [];
+    for (const state of states) {
+      const stateStr = JSON.stringify(state);
+      if (Math.random() < this.epsilon || !this.Q[stateStr]) {
+        actions.push(floor(random(0, 4)));
+      } else {
+        actions.push(
+          Object.keys(this.Q[stateStr]).reduce((a, b) =>
+            this.Q[stateStr][a] > this.Q[stateStr][b] ? a : b
+          )
+        );
+      }
     }
-  
-    return chosenDirection;
-  }
-  
-  remember(state, dir, reward, nextState, done){ // Corrected typo 'remeber' to 'remember'
-    this.memory.push([state, dir, reward, nextState, done]); // Adjusted pushing the data into memory
+    this.lastStates = states.map((state) => JSON.stringify(state));
+    this.lastActions = actions;
+    return actions;
   }
 
-  trainLongMemory() {
-    if (this.memory.length > BATCH_SIZE) {
-      let miniSample = this.memory.sort(() => Math.random() - 0.5).slice(0, BATCH_SIZE);
+  updateQ(rewards, nextStates) {
+    for (let i = 0; i < this.lastStates.length; i++) {
+      const currentState = this.lastStates[i];
+      const action = this.lastActions[i];
+      const reward = rewards[i];
+      const nextStateStr = JSON.stringify(nextStates[i]);
+
+      if (!this.Q[currentState]) {
+        this.Q[currentState] = { [action]: 0 };
+      }
+      if (!this.Q[nextStateStr]) {
+        this.Q[nextStateStr] = { 0: 0, 1: 0, 2: 0, 3: 0 }; // Assuming 4 directions
+      }
+
+      const oldValue = this.Q[currentState][action] || 0;
+      const maxValue = Math.max(...Object.values(this.Q[nextStateStr]));
+      this.Q[currentState][action] =
+        oldValue + this.alpha * (reward + this.gamma * maxValue - oldValue);
+    }
+  }
+
+  writeOnScreen(scores) {
+    let div = document.getElementById("div");
+    div.innerHTML = `Record score: ${this.record.toFixed(0)}`;
   
-      let states = [];
-      let actions = [];
-      let rewards = [];
-      let nextStates = [];
-      let dones = [];
+    let sortedScores = scores.slice().sort((a, b) => b - a); // Sort the scores in descending order
+    let topScores = sortedScores.slice(0, 20); // Grab the top 10 scores
     
-      miniSample.forEach((sample) => {
-        let [state, action, reward, nextState, done] = sample;
-        states.push(state);
-        actions.push(action);
-        rewards.push(reward);
-        nextStates.push(nextState);
-        dones.push(done);
-      });
-  
-      this.trainStep(states, actions, rewards, nextStates, dones);
+    let div2 = document.getElementById("div2");
+    div2.innerHTML = "Top 20: <br>";
+    for (let i = 0; i < topScores.length; i++) {
+      div2.innerHTML += `${i + 1}: ${topScores[i].toFixed(0)}<br>`;
     }
   }
 
-  trainStep(states, actions, rewards, nextStates, dones) {
-    const randomTrainingData = Array.from({ length: 1 }, () => ({
-      input: Array.from({ length: 9 }, () => Math.random()),
-      output: Array.from({ length: 4 }, () => Math.random()),
-    }));
+  train(game) {
+    const currentStates = game.getStates();
+    const actions = this.chooseActions(currentStates).map(
+      (num) => actionMap[num]
+    );
+    const steps = game.steps(actions);
+    const rewards = steps.map(([reward, gameOver, score]) => reward);
+    const nextStates = game.getStates();
+    this.updateQ(rewards, nextStates);
 
-    this.brain.train(randomTrainingData);
+    const scores = steps.map(([reward, gameOver, score]) => score);
+    const currentMaxScore = Math.max(...scores);
+    if (currentMaxScore > this.record) {
+      this.record = currentMaxScore;
+    }
+    this.writeOnScreen(scores);
+
+    const gameOvers = steps.map(([reward, gameOver, score]) => gameOver);
+    if (gameOvers.every((gameOver) => gameOver)) {
+      game.reset();
+    }
   }
 }
