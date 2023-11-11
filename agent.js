@@ -1,3 +1,4 @@
+
 const actionMap = {
   0: "left",
   1: "right",
@@ -7,88 +8,85 @@ const actionMap = {
 
 class Agent {
   constructor() {
-    this.Q = {}; // Q-table to store Q-values
-    this.alpha = 0.1; // learning rate
-    this.gamma = 0.3; // discount factor
-    this.epsilon = 0.4; // exploration rate
-    this.lastStates = null;
-    this.lastActions = null;
+    this.Q = {};
+    this.alpha = 0.1;
+    this.gamma = 0.3;
+    this.epsilon = 0.4;
+    this.lastState = null;
+    this.lastAction = null;
     this.record = 0;
   }
 
-  chooseActions(states) {
-    const actions = [];
-    for (const state of states) {
-      const stateStr = JSON.stringify(state);
-      if (Math.random() < this.epsilon || !this.Q[stateStr]) {
-        actions.push(floor(random(0, 4)));
-      } else {
-        actions.push(
-          Object.keys(this.Q[stateStr]).reduce((a, b) =>
-            this.Q[stateStr][a] > this.Q[stateStr][b] ? a : b
-          )
-        );
-      }
+
+  chooseAction(state) {
+    let action;
+    const stateStr = JSON.stringify(state);
+    if (Math.random() < this.epsilon || !this.Q[stateStr]) {
+      action = floor(random(0, 4));
+    } else {
+      action =
+        Object.keys(this.Q[stateStr]).reduce((a, b) =>
+          this.Q[stateStr][a] > this.Q[stateStr][b] ? a : b
+        )
     }
-    this.lastStates = states.map((state) => JSON.stringify(state));
-    this.lastActions = actions;
-    return actions;
+
+    this.lastState = JSON.stringify(state);
+    this.lastAction = action;
+    return action;
   }
 
-  updateQ(rewards, nextStates) {
-    for (let i = 0; i < this.lastStates.length; i++) {
-      const currentState = this.lastStates[i];
-      const action = this.lastActions[i];
-      const reward = rewards[i];
-      const nextStateStr = JSON.stringify(nextStates[i]);
 
-      if (!this.Q[currentState]) {
-        this.Q[currentState] = { [action]: 0 };
-      }
-      if (!this.Q[nextStateStr]) {
-        this.Q[nextStateStr] = { 0: 0, 1: 0, 2: 0, 3: 0 }; // Assuming 4 directions
-      }
+  updateQ(reward, nextState) {
 
-      const oldValue = this.Q[currentState][action] || 0;
-      const maxValue = Math.max(...Object.values(this.Q[nextStateStr]));
-      this.Q[currentState][action] =
-        oldValue + this.alpha * (reward + this.gamma * maxValue - oldValue);
+    const nextStateStr = JSON.stringify(nextState);
+
+    if (!this.Q[this.lastState]) {
+      this.Q[this.lastState] = { [this.lastAction]: 0 };
     }
+    if (!this.Q[nextStateStr]) {
+      this.Q[nextStateStr] = { 0: 0, 1: 0, 2: 0, 3: 0 };
+    }
+
+    const oldValue = this.Q[this.lastState][this.lastAction] || 0;
+    const maxValue = Math.max(...Object.values(this.Q[nextStateStr]));
+    this.Q[this.lastState][this.lastAction] =
+      oldValue + this.alpha * (reward + this.gamma * maxValue - oldValue);
+
   }
 
-  writeOnScreen(scores) {
-    let div = document.getElementById("div");
-    div.innerHTML = `Record score: ${this.record.toFixed(0)}`;
-  
-    let sortedScores = scores.slice().sort((a, b) => b - a); // Sort the scores in descending order
-    let topScores = sortedScores.slice(0, 20); // Grab the top 10 scores
-    
-    let div2 = document.getElementById("div2");
-    div2.innerHTML = "Top 20: <br>";
-    for (let i = 0; i < topScores.length; i++) {
-      div2.innerHTML += `${i + 1}: ${topScores[i].toFixed(0)}<br>`;
-    }
+
+  writeOnScreen(score, currentState, action, step, reward, nextState) {
+    const scoreEl = document.getElementById("score");
+    scoreEl.innerHTML = `Score: ${score}`;
+    const recordEl = document.getElementById("record");
+    recordEl.innerHTML = `Record: ${this.record}`;
+    const currentStateEl = document.getElementById("currentState");
+    currentStateEl.innerHTML = `Current State: ${currentState}`;
+    const actionEl = document.getElementById("action");
+    actionEl.innerHTML = `Action: ${action}`;
+    const stepEl = document.getElementById("step");
+    stepEl.innerHTML = `Step: ${step}`;
+    const rewardEl = document.getElementById("reward");
+    rewardEl.innerHTML = `Reward: ${reward}`;
+    const nextStateEl = document.getElementById("nextState");
+    nextStateEl.innerHTML = `Next State: ${nextState}`;
+    const qEl = document.getElementById("qTable");
+    qEl.innerHTML = `Q-Table: ${JSON.stringify(this.Q[this.lastState])}`;
   }
+
 
   train(game) {
-    const currentStates = game.getStates();
-    const actions = this.chooseActions(currentStates).map(
-      (num) => actionMap[num]
-    );
-    const steps = game.steps(actions);
-    const rewards = steps.map(([reward, gameOver, score]) => reward);
-    const nextStates = game.getStates();
-    this.updateQ(rewards, nextStates);
+    const currentState = game.getState();
+    const action = actionMap[this.chooseAction(currentState)];
+    const step = game.step(action);
+    const reward = step[0];
+    const nextState = game.getState();
+    this.updateQ(reward, nextState);
 
-    const scores = steps.map(([reward, gameOver, score]) => score);
-    const currentMaxScore = Math.max(...scores);
-    if (currentMaxScore > this.record) {
-      this.record = currentMaxScore;
-    }
-    this.writeOnScreen(scores);
+    this.writeOnScreen(reward, currentState, action, step[1], reward, nextState);
 
-    const gameOvers = steps.map(([reward, gameOver, score]) => gameOver);
-    if (gameOvers.every((gameOver) => gameOver)) {
+    const gameOver = step[1];
+    if (gameOver) {
       game.reset();
     }
   }
